@@ -92,24 +92,23 @@ def completion(model: str, messages: List[Dict[str, str]], max_tokens: int = 100
                     system=system_msg
                 )
                 
-                # Handle streaming for Vertex API
-                if isinstance(client, AnthropicVertex):
-                    while response.stop_reason == "max_tokens":
-                        if messages[-1]['role'] == "user":
-                            messages.append({"role": "assistant", "content": response.content[0].text})
-                        else:
-                            messages[-1]['content'] += response.content[0].text
-                        response = client.messages.create(
-                            model=model,
-                            max_tokens=max_tokens,
-                            temperature=temperature,
-                            messages=messages,
-                            system=system_msg
-                        )
-                        if response.stop_reason == "end_turn":
-                            return messages[-1]['content']
-                    if response.stop_reason == "end_turn" and messages[-1]['role'] == "assistant":
-                        return messages[-1]['content'] + response.content[0].text
+                while response.stop_reason == "max_tokens":
+                    if messages[-1]['role'] == "user":
+                        messages.append({"role": "assistant", "content": response.content[0].text})
+                    else:
+                        messages[-1]['content'] += response.content[0].text
+
+                    response = client.messages.create(
+                        model=model,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        messages=messages,
+                        system=system_msg
+                    )
+
+                if messages[-1]['role'] == "assistant" and response.stop_reason == "end_turn":
+                    messages[-1]['content'] += response.content[0].text
+                    return messages[-1]['content']
                 
                 return response.content[0].text
 
@@ -226,12 +225,14 @@ class Agent:
             temperature=temperature,
             api_key=self.api_key
         )
+        if messages[-1]["role"] == "assistant":
+            self.history.messages[-1]["content"] = response_text
 
-        if self.memory_enabled:
+        elif self.memory_enabled:
             self.add_message("assistant", response_text)
-
+        
         return response_text
-
+    
     def save_conversation(self):
         filename = f"{self.id}.json"
         with open(filename, 'w', encoding='utf-8') as file:

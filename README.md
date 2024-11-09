@@ -109,7 +109,6 @@ Create a `.env` file in your project root:
 ```bash
 # OpenAI
 OPENAI_API_KEY_1=your-key-1
-OPENAI_API_KEY_2=your-key-2
 OPENAI_API_BASE_1=https://api.openai.com/v1
 
 # Anthropic
