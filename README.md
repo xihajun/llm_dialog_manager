@@ -1,7 +1,4 @@
-I'll help you create a comprehensive README.md for the AI Chat History project based on the codebase. Here's a detailed version:
-
-```markdown
-# AI Chat History
+# LLM Dialog Manager
 
 A Python package for managing AI chat conversation history with support for multiple LLM providers (OpenAI, Anthropic, Google, X.AI) and convenient conversation management features.
 
@@ -24,7 +21,7 @@ A Python package for managing AI chat conversation history with support for mult
 ## Installation
 
 ```bash
-pip install ai-chat-history
+pip install llm-dialog-manager
 ```
 
 ## Quick Start
@@ -145,6 +142,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Support
 
 For support, please open an issue in the GitHub repository or contact the maintainers.
-```
-
-This README provides a comprehensive overview of the package's features and functionality, based on the code from:
