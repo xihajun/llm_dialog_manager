@@ -117,7 +117,6 @@ def completion(model: str, messages: List[Dict[str, str]], max_tokens: int = 100
                     api_key=api_key,
                     base_url="https://generativelanguage.googleapis.com/v1beta/"
                 )
-                print(api_key)
                 # Remove any system message from the beginning if present
                 if messages and messages[0]["role"] == "system":
                     system_msg = messages.pop(0)
@@ -131,7 +130,6 @@ def completion(model: str, messages: List[Dict[str, str]], max_tokens: int = 100
                     # max_tokens=max_tokens,
                     temperature=temperature
                 )
-                print(len(response.choices))
                 
                 return response.choices[0].message.content
 
@@ -249,13 +247,6 @@ if __name__ == "__main__":
     # write a test for detect finding agent
     text = "I think the answer is 42"
 
-    # from agent.messageloader import information_detector_messages
-    
-    # # Now you can print or use information_detector_messages as needed
-    # information_detector_agent = Agent("gemini-1.5-pro", information_detector_messages)
-    # information_detector_agent.add_message("user", text)
-    # response = information_detector_agent.generate_response()
-    # print(response)
     agent = Agent("claude-3-5-sonnet-20241022", "you are an assistant", memory_enabled=True)
     
     # Format the prompt to check if the section is the last one in the outline
@@ -267,6 +258,6 @@ if __name__ == "__main__":
 
     print(agent.generate_response(max_tokens=20, temperature=0.0))
     print(agent.history[:])
-    a = agent.history.pop()
-    print(a)
+    last_message = agent.history.pop()
+    print(last_message)
     print(agent.history[:])
