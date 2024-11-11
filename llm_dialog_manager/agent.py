@@ -113,25 +113,53 @@ def completion(model: str, messages: List[Dict[str, str]], max_tokens: int = 100
                 return response.content[0].text
 
             elif "gemini" in model:
-                client = openai.OpenAI(
-                    api_key=api_key,
-                    base_url="https://generativelanguage.googleapis.com/v1beta/"
-                )
-                # Remove any system message from the beginning if present
-                if messages and messages[0]["role"] == "system":
-                    system_msg = messages.pop(0)
-                    # Prepend system message to first user message if exists
-                    if messages:
-                        messages[0]["content"] = f"{system_msg['content']}\n\n{messages[0]['content']}"
-                
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    # max_tokens=max_tokens,
-                    temperature=temperature
-                )
-                
-                return response.choices[0].message.content
+                try:
+                    # First try OpenAI-style API
+                    client = openai.OpenAI(
+                        api_key=api_key,
+                        base_url="https://generativelanguage.googleapis.com/v1beta/"
+                    )
+                    # Remove any system message from the beginning if present
+                    if messages and messages[0]["role"] == "system":
+                        system_msg = messages.pop(0)
+                        # Prepend system message to first user message if exists
+                        if messages:
+                            messages[0]["content"] = f"{system_msg['content']}\n\n{messages[0]['content']}"
+                    
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature
+                    )
+                    
+                    return response.choices[0].message.content
+                    
+                except Exception as e:
+                    # If OpenAI-style API fails, fall back to Google's genai library
+                    logger.info("Falling back to Google's genai library")
+                    genai.configure(api_key=api_key)
+                    
+                    # Convert messages to Gemini format
+                    gemini_messages = []
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            # Prepend system message to first user message if exists
+                            if gemini_messages:
+                                gemini_messages[0].parts[0].text = f"{msg['content']}\n\n{gemini_messages[0].parts[0].text}"
+                        else:
+                            gemini_messages.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
+                    
+                    # Create Gemini model and generate response
+                    model = genai.GenerativeModel(model_name=model)
+                    response = model.generate_content(
+                        gemini_messages,
+                        generation_config=genai.types.GenerationConfig(
+                            temperature=temperature,
+                            max_output_tokens=max_tokens
+                        )
+                    )
+                    
+                    return response.text
 
             elif "grok" in model:
                 # Randomly choose between OpenAI and Anthropic SDK
