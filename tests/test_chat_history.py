@@ -1,5 +1,5 @@
 import pytest
-from ai_chat_history import ChatHistory
+from llm_dialog_manager import ChatHistory
 
 def test_chat_history_initialization():
     # Test empty initialization

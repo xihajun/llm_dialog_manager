@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "llm_dialog_manager"
-version = "0.1.2"
+version = "0.2.1"
 description = "A Python package for managing LLM chat conversation history"
 readme = "README.md"
 authors = [{ name = "xihajun", email = "work@2333.fun" }]
