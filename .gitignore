@@ -32,4 +32,6 @@ venv/
 .pytest_cache/
 .coverage
 .benchmarks/
+
+# personal variables
 PLAN.md
