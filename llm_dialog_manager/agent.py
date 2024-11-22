@@ -113,27 +113,31 @@ def completion(model: str, messages: List[Dict[str, str]], max_tokens: int = 100
                 return response.content[0].text
 
             elif "gemini" in model:
-                client = openai.OpenAI(
-                    api_key=api_key,
-                    base_url="https://generativelanguage.googleapis.com/v1beta/"
-                )
-                print(api_key)
-                # Remove any system message from the beginning if present
-                if messages and messages[0]["role"] == "system":
-                    system_msg = messages.pop(0)
-                    # Prepend system message to first user message if exists
-                    if messages:
-                        messages[0]["content"] = f"{system_msg['content']}\n\n{messages[0]['content']}"
+                # Configure the Gemini API
+                genai.configure(api_key=api_key)
                 
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    # max_tokens=max_tokens,
-                    temperature=temperature
-                )
-                print(len(response.choices))
+                # Convert messages to Gemini format
+                gemini_messages = []
+                for msg in messages:
+                    if msg["role"] == "system":
+                        # Prepend system message to first user message if exists
+                        if gemini_messages:
+                            gemini_messages[0].parts[0].text = f"{msg['content']}\n\n{gemini_messages[0].parts[0].text}"
+                    else:
+                        gemini_messages.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
                 
-                return response.choices[0].message.content
+                # Create Gemini model and generate response
+                model = genai.GenerativeModel(model_name=model)
+                response = model.generate_content(
+                    gemini_messages,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=temperature,
+                        # Note: Gemini handles max_tokens differently, might need adjustment
+                        max_output_tokens=max_tokens
+                    )
+                )
+                
+                return response.text
 
             elif "grok" in model:
                 # Randomly choose between OpenAI and Anthropic SDK
@@ -256,7 +260,7 @@ if __name__ == "__main__":
     # information_detector_agent.add_message("user", text)
     # response = information_detector_agent.generate_response()
     # print(response)
-    agent = Agent("claude-3-5-sonnet-20241022", "you are an assistant", memory_enabled=True)
+    agent = Agent("gemini-1.5-pro-002", "you are an assistant", memory_enabled=True)
     
     # Format the prompt to check if the section is the last one in the outline
     prompt = f"Say: {text}\n"
@@ -265,7 +269,7 @@ if __name__ == "__main__":
     agent.add_message("user", prompt)
     agent.add_message("assistant", "the answer")
 
-    print(agent.generate_response(max_tokens=20, temperature=0.0))
+    print(agent.generate_response())
     print(agent.history[:])
     a = agent.history.pop()
     print(a)

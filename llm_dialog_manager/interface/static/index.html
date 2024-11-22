@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LLM Dialog Console</title>
+    <style>
+        :root {
+            --border-color: #1f2937;
+            --background-dark: #111827;
+            --panel-bg: #1a2234;
+            --text-color: #e5e7eb;
+            --accent-blue: #2563eb;
+            --accent-hover: #1d4ed8;
+            --gradient-bg: linear-gradient(to bottom right, #1a2234, #111827);
+            --message-hover: rgba(37, 99, 235, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell;
+            background: var(--gradient-bg);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--background-dark);
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .chat-panel {
+            background: var(--panel-bg);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            transition: all 0.2s ease;
+        }
+
+        .message {
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(31, 41, 55, 0.5);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+         
+        }
+
+        .message:hover {
+            background: var(--message-hover);
+            transform: translateY(-1px);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .role-label {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            padding: 0.75rem;
+            resize: vertical;
+            min-height: 60px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        textarea:focus {
+            outline: none;
+        }
+
+        .nav-controls {
+            display: flex;
+            gap: 0.75rem;
+         
+        }
+
+        .button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-color);
+        }
+
+        .primary {
+            background: var(--accent-blue);
+        }
+
+        .primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .secondary {
+            background: rgba(31, 41, 55, 0.8);
+        }
+
+        .secondary:hover {
+            background: rgba(31, 41, 55, 1);
+        }
+
+        #chatOutput {
+            background: var(--panel-bg);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .button-bar {
+            display: none;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .model-select {
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .message-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-button {
+            padding: 0.25rem;
+            border-radius: 0.375rem;
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+        }
+
+        .icon-button:hover {
+            background: rgba(31, 41, 55, 0.8);
+            color: var(--text-color);
+        }
+
+        .add-message-container {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .chat-pair {
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            background: rgba(17, 24, 39, 0.3);
+         
+        }
+
+        .chat-pair .message {
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-pair .message:last-child {
+            margin-bottom: 0;
+        }
+         /* Additional styling for the output result panel */
+         #chatOutput {
+            background: var(--panel-bg);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            height: 100%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+
+        .output-content {
+            flex: 1;
+            overflow-y: auto;
+         
+            color: var(--text-color);
+            padding: 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .output-actions {
+            margin-top: 1rem;
+            padding: 1rem;
+            display: flex;
+            justify-content: flex-end;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .output-actions .button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .output-actions .button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .output-metrics {
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+
+        .metrics-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: rgba(17, 24, 39, 0.4);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .metric-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #9ca3af;
+            font-size: 0.875rem;
+        }
+
+        .metric-item svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+        }
+
+        .version-badge {
+            background: var(--accent-blue);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .loading-spinner {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .loading-spinner::after {
+            content: '';
+            width: 32px;
+            height: 32px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .variables-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .variables-panel.open {
+            right: 0;
+        }
+
+        .variables-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .variables-content {
+            padding: 1rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .variable-item {
+            background: rgba(17, 24, 39, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .variable-tag {
+            background: var(--accent-blue);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 0.9em;
+        }
+
+        .variable-item.highlight {
+            animation: highlight 2s ease-out;
+        }
+
+        @keyframes highlight {
+            0% { background: var(--accent-blue); }
+            100% { background: rgba(17, 24, 39, 0.4); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--panel-bg);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: var(--message-hover);
+        }
+
+        .history-title {
+            font-weight: 500;
+        }
+
+        .history-date {
+            font-size: 0.875rem;
+            color: #9ca3af;
+        }
+
+        .chat-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .chat-title input {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-size: 1rem;
+            width: 100%;
+        }
+
+        .chat-title input:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">LLM Dialog Console</div>
+            <button id="historyBtn" class="button secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                History
+            </button>
+            <select id="modelSelect" class="model-select">
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <!-- Add other supported models as needed -->
+            </select>
+            <button id="variablesBtn" class="button secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 20h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/>
+                    <path d="M12 6v8M8 10h8"/>
+                </svg>
+                Variables
+            </button>
+        </div>
+        <div class="nav-controls">
+            <button id="clearButton" class="button secondary">Clear</button>
+            <button id="sendButton" class="button primary">Send</button>
+        </div>
+    </header>
+    <div class="container">
+        <div class="chat-panel">
+            <div class="message">
+                <div class="message-header">
+                    <span class="role-label">System</span>
+                </div>
+                <textarea id="systemPrompt" placeholder="Set a system prompt (optional)"></textarea>
+            </div>
+            
+            <div id="chatMessages">
+                <div class="chat-pair">
+                    <div class="message">
+                        <div class="message-header">
+                            <span class="role-label">User</span>
+                            <div class="message-controls">
+                                <button class="icon-button delete-message">×</button>
+                            </div>
+                        </div>
+                        <textarea class="user-input" placeholder="Enter user message..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="add-message-container">
+                <button id="addMessageBtn" class="button secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Chat Pair
+                </button>
+            </div>
+        </div>
+        
+        <div id="chatOutput"></div>
+        <div id="loadingSpinner" class="loading-spinner"></div>
+    </div>
+    <div class="variables-panel" id="variablesPanel">
+        <div class="variables-header">
+            <h3>Variables</h3>
+            <button class="icon-button" id="closeVariablesBtn">×</button>
+        </div>
+        <div class="variables-content">
+            <div id="variablesList"></div>
+            <button id="addVariableBtn" class="button secondary">
+                Add Variable
+            </button>
+        </div>
+    </div>
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Chat History</h3>
+                <button class="icon-button" id="closeHistoryBtn">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let ws = new WebSocket(`ws://${window.location.host}/ws`);
+        const chatOutput = document.getElementById('chatOutput');
+        const sendBtn = document.getElementById('sendButton');
+        const clearBtn = document.getElementById('clearButton');
+        const modelSelect = document.getElementById('modelSelect');
+        const addMessageBtn = document.getElementById('addMessageBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const systemPrompt = document.getElementById('systemPrompt');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const historyBtn = document.getElementById('historyBtn');
+        const historyModal = document.getElementById('historyModal');
+        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+        const historyList = document.getElementById('historyList');
+        let currentChatId = null;
+
+        ws.onmessage = function(event) {
+            const response = JSON.parse(event.data);
+            // Hide loading spinner and show output
+            loadingSpinner.style.display = 'none';
+            chatOutput.style.display = 'flex';
+            addResponse(response);
+        };
+
+        sendBtn.onclick = async function() {
+            const pairs = collectChatPairs();
+            if (pairs.length > 0) {
+                // Clear previous output and show loading spinner
+                chatOutput.style.display = 'none';
+                loadingSpinner.style.display = 'flex';
+                
+                try {
+                    ws.send(JSON.stringify({
+                        messages: pairs,
+                        system: systemPrompt.value.trim(),
+                        model: modelSelect.value
+                    }));
+                } catch (error) {
+                    console.error('Error:', error);
+                    chatOutput.innerHTML = `<div class="output-content">Error: ${error.message}</div>`;
+                }
+            }
+            console.log(pairs);
+        };
+
+        // Handle Cmd/Ctrl + Enter
+        document.addEventListener('keydown', function(e) {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                sendBtn.click();
+            }
+        });
+
+        clearBtn.onclick = function() {
+            const inputs = document.querySelectorAll('.user-input, .assistant-input');
+            inputs.forEach(input => input.value = '');
+            chatOutput.innerHTML = '';
+        };
+
+        function addResponse(response) {
+            const { content, metrics, actions } = response;
+            
+            chatOutput.innerHTML = `
+                <div class="output-header">
+                    <div class="metrics-container">
+                        <div class="metric-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                            </svg>
+                            <span>${metrics.confidence}% confidence</span>
+                        </div>
+                        <div class="metric-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                            <span>${metrics.time}</span>
+                        </div>
+                        <div class="metric-item">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M7 21h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z"/>
+                                <path d="M7 8h10M7 12h10M7 16h10"/>
+                            </svg>
+                            <span>${metrics.tokens} tokens</span>
+                        </div>
+                        <span class="version-badge">v1</span>
+                    </div>
+                </div>
+                <div class="output-content">${content}</div>
+                ${actions?.add_to_chat ? `
+                    <div class="output-actions">
+                        <button class="button secondary add-to-chat-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M4 4l5 5"/>
+                            </svg>
+                            Add to Chat
+                        </button>
+                    </div>
+                ` : ''}
+            `;
+
+            const addToChatBtn = chatOutput.querySelector('.add-to-chat-btn');
+            if (addToChatBtn) {
+                addToChatBtn.addEventListener('click', () => addResponseToChat(content));
+            }
+        }
+
+        function addResponseToChat(content) {
+            const chatPair = document.createElement('div');
+            chatPair.className = 'chat-pair';
+            
+            const assistantMessage = document.createElement('div');
+            assistantMessage.className = 'message';
+            assistantMessage.innerHTML = `
+                <div class="message-header">
+                    <span class="role-label">Assistant</span>
+                </div>
+                <textarea class="assistant-input" placeholder="Enter assistant message..."></textarea>
+            `;
+            
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message';
+            userMessage.innerHTML = `
+                <div class="message-header">
+                    <span class="role-label">User</span>
+                    <div class="message-controls">
+                        <button class="icon-button delete-message">×</button>
+                    </div>
+                </div>
+                <textarea class="user-input" placeholder="Enter user message..."></textarea>
+            `;
+
+            assistantMessage.querySelector('textarea').value = content;
+            
+            chatPair.appendChild(assistantMessage);
+            chatPair.appendChild(userMessage);
+            
+            chatMessages.appendChild(chatPair);
+            
+            const chatPanel = document.querySelector('.chat-panel');
+            chatPanel.scrollTop = chatPanel.scrollHeight;
+
+            const textareas = chatPair.querySelectorAll('textarea');
+            textareas.forEach(textarea => {
+                textarea.addEventListener('blur', () => {
+                    detectVariables(textarea);
+                });
+            });
+        }
+
+        // Handle model selection
+        modelSelect.addEventListener('change', function() {
+            const selectedModel = this.value;
+            console.log(`Switched to model: ${selectedModel}`);
+            // You might want to clear the chat or update the UI when model changes
+            chatOutput.innerHTML = '';
+        });
+
+        // Add new chat pair
+        addMessageBtn.addEventListener('click', addChatPair);
+
+        // Delete chat pair handler
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.delete-message')) {
+                const chatPair = e.target.closest('.chat-pair');
+                if (chatPair) {
+                    chatPair.remove();
+                }
+            }
+        });
+
+        function addChatPair() {
+            const chatPair = document.createElement('div');
+            chatPair.className = 'chat-pair';
+            chatPair.innerHTML = `
+                <div class="message">
+                    <div class="message-header">
+                        <span class="role-label">Assistant</span>
+                    </div>
+                    <textarea class="assistant-input" placeholder="Enter assistant message..."></textarea>
+                </div>
+                <div class="message">
+                    <div class="message-header">
+                        <span class="role-label">User</span>
+                        <div class="message-controls">
+                            <button class="icon-button delete-message">×</button>
+                        </div>
+                    </div>
+                    <textarea class="user-input" placeholder="Enter user message..."></textarea>
+                </div>
+            `;
+            chatMessages.appendChild(chatPair);
+            // Scroll to the bottom of chat panel
+            const chatPanel = document.querySelector('.chat-panel');
+            chatPanel.scrollTop = chatPanel.scrollHeight;
+        }
+
+        function collectChatPairs() {
+            const pairs = [];
+            const chatPairs = document.querySelectorAll('.chat-pair');
+            
+            chatPairs.forEach(pair => {
+                const userInput = pair.querySelector('.user-input');
+                const assistantInput = pair.querySelector('.assistant-input');
+                
+                let userMessage = userInput ? userInput.value.trim() : '';
+                let assistantMessage = assistantInput ? assistantInput.value.trim() : '';
+                
+                // 替换变量
+                for (const [name, value] of Object.entries(variables)) {
+                    const pattern = new RegExp(`{{${name}}}`, 'g');
+                    userMessage = userMessage.replace(pattern, value);
+                    assistantMessage = assistantMessage.replace(pattern, value);
+                }
+                
+                if (userMessage || assistantMessage) {
+                    pairs.push({
+                        user: userMessage,
+                        assistant: assistantMessage
+                    });
+                }
+            });
+            return pairs;
+        }
+
+        // 添加变量管理相关的变量声明
+        const variablesBtn = document.getElementById('variablesBtn');
+        const variablesPanel = document.getElementById('variablesPanel');
+        const closeVariablesBtn = document.getElementById('closeVariablesBtn');
+        const addVariableBtn = document.getElementById('addVariableBtn');
+        const variablesList = document.getElementById('variablesList');
+
+        // 存储变量
+        let variables = {};
+
+        // 变量面板控制
+        variablesBtn.onclick = function() {
+            variablesPanel.classList.add('open');
+        };
+
+        closeVariablesBtn.onclick = function() {
+            variablesPanel.classList.remove('open');
+        };
+
+        addVariableBtn.onclick = function() {
+            addVariable();
+        };
+
+        function addVariable(name = '', value = '') {
+            const variableItem = document.createElement('div');
+            variableItem.className = 'variable-item';
+            
+            const variableId = 'var_' + Date.now();
+            variableItem.innerHTML = `
+                <input type="text" class="variable-name" placeholder="Variable name" value="${name}">
+                <input type="text" class="variable-value" placeholder="Value" value="${value}">
+                <button class="icon-button delete-variable">×</button>
+            `;
+
+            variablesList.appendChild(variableItem);
+
+            const nameInput = variableItem.querySelector('.variable-name');
+            const valueInput = variableItem.querySelector('.variable-value');
+            const deleteBtn = variableItem.querySelector('.delete-variable');
+
+            nameInput.onchange = () => updateVariable(variableId, nameInput.value, valueInput.value);
+            valueInput.onchange = () => updateVariable(variableId, nameInput.value, valueInput.value);
+            deleteBtn.onclick = () => variableItem.remove();
+        }
+
+        function updateVariable(id, name, value) {
+            variables[name] = value;
+        }
+
+        function detectVariables(textarea) {
+            const text = textarea.value;
+            const variablePattern = /{{([^}]+)}}/g;
+            let match;
+            
+            while ((match = variablePattern.exec(text)) !== null) {
+                const varName = match[1];
+                if (!variables[varName]) {
+                    addVariable(varName, '');
+                }
+            }
+
+            // Convert text to HTML with clickable variable tags
+            const htmlContent = text.replace(variablePattern, (match, varName) => {
+                return `<span class="variable-tag" data-var="${varName}">${match}</span>`;
+            });
+
+            // Create a div to show formatted content
+            const formattedDiv = document.createElement('div');
+            formattedDiv.innerHTML = htmlContent;
+            formattedDiv.style.padding = '0.75rem';
+            formattedDiv.style.minHeight = '60px';
+
+            // Add click handlers for variable tags
+            formattedDiv.querySelectorAll('.variable-tag').forEach(tag => {
+                tag.addEventListener('click', () => highlightVariable(tag.dataset.var));
+            });
+
+            // Replace textarea with formatted div when not focused
+            textarea.style.display = 'none';
+            textarea.parentNode.insertBefore(formattedDiv, textarea);
+
+            // Show textarea again when clicking the formatted div
+            formattedDiv.addEventListener('click', () => {
+                textarea.style.display = '';
+                formattedDiv.remove();
+                textarea.focus();
+            });
+        }
+
+        function highlightVariable(varName) {
+            variablesPanel.classList.add('open');
+            
+            // Find or create variable item
+            let varItem = Array.from(variablesList.children)
+                .find(item => item.querySelector('.variable-name').value === varName);
+                
+            if (!varItem) {
+                addVariable(varName, '');
+                varItem = variablesList.lastElementChild;
+            }
+
+            // Highlight the variable item
+            varItem.classList.add('highlight');
+            varItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => varItem.classList.remove('highlight'), 2000);
+        }
+
+        // Add event listeners to all textareas
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.addEventListener('blur', () => {
+                detectVariables(textarea);
+            });
+        });
+
+        // Add chat title input after the header
+        const chatPanel = document.querySelector('.chat-panel');
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'chat-title';
+        titleDiv.innerHTML = `
+            <input type="text" id="chatTitle" placeholder="Untitled">
+        `;
+        chatPanel.insertBefore(titleDiv, chatPanel.firstChild);
+        const chatTitle = document.getElementById('chatTitle');
+
+        // History modal controls
+        historyBtn.onclick = async function() {
+            historyModal.style.display = 'block';
+            await loadHistory();
+        };
+
+        closeHistoryBtn.onclick = function() {
+            historyModal.style.display = 'none';
+        };
+
+        // Close modal when clicking outside
+        historyModal.onclick = function(e) {
+            if (e.target === historyModal) {
+                historyModal.style.display = 'none';
+            }
+        };
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const histories = await response.json();
+                
+                historyList.innerHTML = histories.map(history => `
+                    <div class="history-item" data-id="${history.id}">
+                        <div class="history-title">${history.title}</div>
+                        <div class="history-date">${new Date(history.timestamp).toLocaleString()}</div>
+                    </div>
+                `).join('');
+                
+                // Add click handlers
+                historyList.querySelectorAll('.history-item').forEach(item => {
+                    item.onclick = () => loadChat(item.dataset.id);
+                });
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        async function loadChat(id) {
+            try {
+                const response = await fetch(`/api/history/${id}`);
+                const data = await response.json();
+                
+                // Update UI with loaded chat
+                chatTitle.value = data.title;
+                systemPrompt.value = data.system || '';
+                
+                // Clear existing messages
+                chatMessages.innerHTML = '';
+                
+                // Add loaded messages
+                data.messages.forEach(pair => {
+                    const chatPair = document.createElement('div');
+                    chatPair.className = 'chat-pair';
+                    chatPair.innerHTML = `
+                        <div class="message">
+                            <div class="message-header">
+                                <span class="role-label">User</span>
+                                <div class="message-controls">
+                                    <button class="icon-button delete-message">×</button>
+                                </div>
+                            </div>
+                            <textarea class="user-input">${pair.user || ''}</textarea>
+                        </div>
+                        ${pair.assistant ? `
+                            <div class="message">
+                                <div class="message-header">
+                                    <span class="role-label">Assistant</span>
+                                </div>
+                                <textarea class="assistant-input">${pair.assistant}</textarea>
+                            </div>
+                        ` : ''}
+                    `;
+                    chatMessages.appendChild(chatPair);
+                });
+                
+                currentChatId = id;
+                historyModal.style.display = 'none';
+            } catch (error) {
+                console.error('Error loading chat:', error);
+            }
+        }
+
+        // Modify the send button to save history after successful response
+        const originalSendClick = sendBtn.onclick;
+        sendBtn.onclick = async function() {
+            const response = await originalSendClick.call(this);
+            
+            // Save chat history
+            try {
+                const data = {
+                    title: chatTitle.value || 'Untitled',
+                    system: systemPrompt.value,
+                    messages: collectChatPairs()
+                };
+                
+                const response = await fetch('/api/history', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                currentChatId = result.id;
+            } catch (error) {
+                console.error('Error saving chat:', error);
+            }
+        };
+    </script>
+</body>
+</html>
