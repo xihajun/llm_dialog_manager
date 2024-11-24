@@ -26,80 +26,8 @@ pip install llm-dialog-manager
 
 ## Quick Start
 
-### Basic Usage
 
-```python
-from llm_dialog_manager import ChatHistory
-
-# Initialize with a system message
-history = ChatHistory("You are a helpful assistant")
-
-# Add messages
-history.add_user_message("Hello!")
-history.add_assistant_message("Hi there! How can I help you today?")
-
-# Print conversation
-print(history)
-```
-
-### Using the AI Agent
-
-```python
-from llm_dialog_manager import Agent
-
-# Initialize an agent with a specific model
-agent = Agent("claude-2.1", memory_enabled=True)
-
-# Add messages and generate responses
-agent.add_message("system", "You are a helpful assistant")
-agent.add_message("user", "What is the capital of France?")
-response = agent.generate_response()
-
-# Save conversation
-agent.save_conversation()
-```
-
-## Advanced Features
-
-### Managing Multiple API Keys
-
-```python
-from llm_dialog_manager import Agent
-
-# Use specific API key
-agent = Agent("gpt-4", api_key="your-api-key")
-
-# Or use environment variables
-# OPENAI_API_KEY_1=key1
-# OPENAI_API_KEY_2=key2
-# The system will automatically handle load balancing
-```
-
-### Conversation Management
-
-```python
-from llm_dialog_manager import ChatHistory
-
-history = ChatHistory()
-
-# Add messages with role validation
-history.add_message("Hello system", "system")
-history.add_message("Hello user", "user")
-history.add_message("Hello assistant", "assistant")
-
-# Search conversations
-results = history.search_for_keyword("hello")
-
-# Get conversation status
-status = history.conversation_status()
-history.display_conversation_status()
-
-# Get conversation snippets
-snippet = history.get_conversation_snippet(1)
-history.display_snippet(1)
-```
-
-## Environment Variables
+### Environment Variables
 
 Create a `.env` file in your project root:
 
@@ -118,6 +46,34 @@ GEMINI_API_KEY=your-gemini-key
 # X.AI
 XAI_API_KEY=your-x-key
 ```
+
+### Basic Usage
+
+
+```python
+from llm_dialog_manager import Agent
+
+# Initialize an agent with a specific model
+agent = Agent("claude-2.1", memory_enabled=True)
+
+# Add messages and generate responses
+agent.add_message("system", "You are a helpful assistant")
+agent.add_message("user", "What is the capital of France?")
+response = agent.generate_response()
+
+# Save conversation
+agent.save_conversation()
+```
+
+### Setup Debugging Console
+
+```bash
+python app.py
+# open localhost:8000
+```
+https://github.com/user-attachments/assets/5f640029-24e6-44ea-a3a3-02eb3de0d4df
+
+
 
 ## Development
 
