@@ -44,26 +44,30 @@ jobs:
           # Get major and minor version from previous step
           MAJOR_VERSION="${{ steps.get_version.outputs.major_version }}"
           MINOR_VERSION="${{ steps.get_version.outputs.minor_version }}"
-          
-          # Get commit count since last tag or from the beginning if no tags
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            # If no tags exist, count all commits
-            COMMIT_COUNT=$(git rev-list --count HEAD)
+
+          # Find the latest tag matching the current major.minor version
+          VERSION_PREFIX="v${MAJOR_VERSION}.${MINOR_VERSION}."
+          LAST_VERSION_TAG=$(git tag --list "${VERSION_PREFIX}*" --sort=-v:refname | head -n 1)
+
+          if [ -z "$LAST_VERSION_TAG" ]; then
+            # No tag exists for this major.minor version, start from 0
+            COMMIT_COUNT=0
           else
-            # Count commits since last tag
-            COMMIT_COUNT=$(git rev-list ${LAST_TAG}..HEAD --count)
+            # Count commits since the last version tag
+            COMMIT_COUNT=$(git rev-list ${LAST_VERSION_TAG}..HEAD --count)
+            # Increment commit count to start from the next patch version
+            COMMIT_COUNT=$((COMMIT_COUNT + 1))
           fi
-          
-          # Create new version
+
+          # Create the new version
           NEW_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${COMMIT_COUNT}"
-          
+
           # Update version in __init__.py
           sed -i "s/__version__ = \".*\"/__version__ = \"${NEW_VERSION}\"/" llm_dialog_manager/__init__.py
-          
+
           # Update version in pyproject.toml
           sed -i "s/version = \".*\"/version = \"${NEW_VERSION}\"/" pyproject.toml
-          
+
           # Commit the version update
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -71,6 +75,7 @@ jobs:
           git commit -m "Bump version to ${NEW_VERSION} [skip ci]"
           git tag "v${NEW_VERSION}"
           git push && git push --tags
+
       
       - name: Build package
         run: python -m build
