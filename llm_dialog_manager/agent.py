@@ -264,8 +264,9 @@ class Agent:
         with open(filename, 'w', encoding='utf-8') as file:
             json.dump(self.history.messages, file, ensure_ascii=False, indent=4)
 
-    def load_conversation(self):
-        filename = f"{self.id}.json"
+    def load_conversation(self, filename=None):
+        if filename is None:
+            filename = f"{self.id}.json"
         with open(filename, 'r', encoding='utf-8') as file:
             messages = json.load(file)
             self.history = ChatHistory(messages)
