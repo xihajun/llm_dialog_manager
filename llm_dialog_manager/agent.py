@@ -281,12 +281,13 @@ class Agent:
             messages = json.load(file)
             self.history = ChatHistory(messages)
 
-    def add_repo(self, repo_url: Optional[str] = None, username: Optional[str] = None, repo_name: Optional[str] = None, commit_hash: Optional[str] = None):
-        if username and repo_name:
+    def load_repo(self, repo_name: Optional[str] = None, commit_hash: Optional[str] = None):
+        """eg: repo_name: xihajun/llm_dialog_manager"""
+        if repo_name:
             if commit_hash:
-                repo_url = f"https://github.com/{username}/{repo_name}/archive/{commit_hash}.zip"
+                repo_url = f"https://github.com/{repo_name}/archive/{commit_hash}.zip"
             else:
-                repo_url = f"https://github.com/{username}/{repo_name}/archive/refs/heads/main.zip"
+                repo_url = f"https://github.com/{repo_name}/archive/refs/heads/main.zip"
         
         if not repo_url:
             raise ValueError("Either repo_url or both username and repo_name must be provided")
