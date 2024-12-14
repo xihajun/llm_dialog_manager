@@ -6,6 +6,9 @@ from typing import List, Dict, Optional
 import logging
 from pathlib import Path
 import random
+import requests
+import zipfile
+import io
 
 # Third-party imports
 import anthropic
@@ -234,8 +237,15 @@ class Agent:
         self.history = ChatHistory(messages)
         self.memory_enabled = memory_enabled
         self.api_key = api_key
+        self.repo_content = []
 
     def add_message(self, role, content):
+        repo_content = ""
+        while self.repo_content:
+            repo = self.repo_content.pop()
+            repo_content += f"<repo>\n{repo}\n</repo>\n"
+        
+        content = repo_content + content
         self.history.add_message(content, role)
 
     def generate_response(self, max_tokens=3585, temperature=0.7):
@@ -270,6 +280,29 @@ class Agent:
         with open(filename, 'r', encoding='utf-8') as file:
             messages = json.load(file)
             self.history = ChatHistory(messages)
+
+    def add_repo(self, repo_url: Optional[str] = None, username: Optional[str] = None, repo_name: Optional[str] = None, commit_hash: Optional[str] = None):
+        if username and repo_name:
+            if commit_hash:
+                repo_url = f"https://github.com/{username}/{repo_name}/archive/{commit_hash}.zip"
+            else:
+                repo_url = f"https://github.com/{username}/{repo_name}/archive/refs/heads/main.zip"
+        
+        if not repo_url:
+            raise ValueError("Either repo_url or both username and repo_name must be provided")
+        
+        response = requests.get(repo_url)
+        if response.status_code == 200:
+            repo_content = ""
+            with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+                for file_info in z.infolist():
+                    if not file_info.is_dir() and file_info.filename.endswith(('.py', '.txt')):
+                        with z.open(file_info) as f:
+                            content = f.read().decode('utf-8')
+                            repo_content += f"{file_info.filename}\n```\n{content}\n```\n"
+            self.repo_content.append(repo_content)
+        else:
+            raise ValueError(f"Failed to download repository from {repo_url}")
 
 if __name__ == "__main__":
 
