@@ -10,6 +10,14 @@ def test_agent_initialization(env_setup):
     with pytest.raises(ValueError):
         Agent("invalid-model")
 
+    # Test add_repo method
+    agent.add_repo("https://github.com/some/repo/archive/refs/heads/main.zip")
+    assert "some content from the repo" in agent.history.messages[-1]["content"]
+
+    # Test add_repo method with username and repo name
+    agent.add_repo(repo_url="", username="someuser", repo_name="somerepo")
+    assert "some content from the repo" in agent.history.messages[-1]["content"]
+
 def test_agent_message_handling(env_setup):
     agent = Agent("claude-2.1", memory_enabled=True)
     
@@ -19,6 +27,14 @@ def test_agent_message_handling(env_setup):
     
     assert len(agent.history) == 2
     assert agent.history.messages[-1]["role"] == "user"
+
+    # Test add_repo method
+    agent.add_repo("https://github.com/some/repo/archive/refs/heads/main.zip")
+    assert "some content from the repo" in agent.history.messages[-1]["content"]
+
+    # Test add_repo method with username and repo name
+    agent.add_repo(repo_url="", username="someuser", repo_name="somerepo")
+    assert "some content from the repo" in agent.history.messages[-1]["content"]
 
 def test_conversation_save_load(env_setup, tmp_path):
     agent = Agent("claude-2.1")
