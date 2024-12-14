@@ -48,4 +48,13 @@ def test_conversation_save_load(env_setup, tmp_path):
     new_agent.load_conversation()
     
     assert len(new_agent.history) == 1
-    assert new_agent.history.messages[0]["content"] == "Test message" 
+    assert new_agent.history.messages[0]["content"] == "Test message"
+
+def test_add_repo_with_github_repo(env_setup):
+    agent = Agent("claude-2.1", memory_enabled=True)
+    
+    # Test add_repo method with a real GitHub repository
+    agent.add_repo(repo_url="https://github.com/xihajun/llm_dialog_manager/archive/refs/heads/main.zip")
+    
+    # Check if .env.example file content is in the repo_content
+    assert any(".env.example" in content for content in agent.repo_content)
