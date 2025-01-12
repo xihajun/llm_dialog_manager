@@ -31,14 +31,29 @@ jobs:
       - name: Get version from pyproject.toml
         id: get_version
         run: |
-          CURRENT_VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
+          # First verify the file exists and extract version with error handling
+          CURRENT_VERSION=$(python -c '
+          import toml
+          import sys
+          try:
+              config = toml.load("pyproject.toml")
+              if "project" not in config:
+                  print("Error: Missing [project] section in pyproject.toml", file=sys.stderr)
+                  sys.exit(1)
+              print(config["project"]["version"])
+          except Exception as e:
+              print(f"Error: {str(e)}", file=sys.stderr)
+              sys.exit(1)
+          ')
+          
+          # Store the version in GitHub Actions output
           echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
           
-          # Split version into parts
+          # Split version into major, minor, patch components
           IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
           echo "major_version=${major}" >> $GITHUB_OUTPUT
           echo "minor_version=${minor}" >> $GITHUB_OUTPUT
-      
+
       - name: Update version
         run: |
           set -e  # Exit immediately if a command exits with a non-zero status
