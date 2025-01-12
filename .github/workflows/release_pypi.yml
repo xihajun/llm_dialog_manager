@@ -1,4 +1,5 @@
 name: Publish to PyPI
+
 on:
   workflow_dispatch:
   push:
@@ -10,13 +11,12 @@ on:
 
 jobs:
   publish:
-    if: "!contains(github.event.head_commit.message, 'Bump version')"
+    if: "!contains(toLower(github.event.head_commit.message), 'bump version')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0  # 需要完整的历史记录以获取所有标签
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -26,56 +26,63 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build twine setuptools wheel
+          pip install build twine setuptools wheel toml
       
       - name: Get version from pyproject.toml
         id: get_version
         run: |
-          CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          CURRENT_VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
           echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
           
           # Split version into parts
-          IFS='.' read -r major minor _ <<< "$CURRENT_VERSION"
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
           echo "major_version=${major}" >> $GITHUB_OUTPUT
           echo "minor_version=${minor}" >> $GITHUB_OUTPUT
       
       - name: Update version
         run: |
+          set -e  # Exit immediately if a command exits with a non-zero status
+          
           # Get major and minor version from previous step
           MAJOR_VERSION="${{ steps.get_version.outputs.major_version }}"
           MINOR_VERSION="${{ steps.get_version.outputs.minor_version }}"
-
+          
           # Find the latest tag matching the current major.minor version
           VERSION_PREFIX="v${MAJOR_VERSION}.${MINOR_VERSION}."
           LAST_VERSION_TAG=$(git tag --list "${VERSION_PREFIX}*" --sort=-v:refname | head -n 1)
-
+          
           if [ -z "$LAST_VERSION_TAG" ]; then
-            # No tag exists for this major.minor version, start from 0
-            COMMIT_COUNT=0
+            # No tag exists for this major.minor version, start from 1
+            COMMIT_COUNT=1
           else
             # Count commits since the last version tag
             COMMIT_COUNT=$(git rev-list ${LAST_VERSION_TAG}..HEAD --count)
             # Increment commit count to start from the next patch version
             COMMIT_COUNT=$((COMMIT_COUNT + 1))
           fi
-
+          
           # Create the new version
           NEW_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${COMMIT_COUNT}"
-
+          echo "New version will be: ${NEW_VERSION}"
+          
           # Update version in __init__.py
           sed -i "s/__version__ = \".*\"/__version__ = \"${NEW_VERSION}\"/" llm_dialog_manager/__init__.py
-
+          
           # Update version in pyproject.toml
-          sed -i "s/version = \".*\"/version = \"${NEW_VERSION}\"/" pyproject.toml
-
+          python -c "import toml; data = toml.load('pyproject.toml'); data['tool']['poetry']['version'] = '${NEW_VERSION}'; with open('pyproject.toml', 'w') as f: toml.dump(data, f)"
+          
           # Commit the version update
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add llm_dialog_manager/__init__.py pyproject.toml
           git commit -m "Bump version to ${NEW_VERSION} [skip ci]"
+          
+          # Tag the new version
           git tag "v${NEW_VERSION}"
-          git push && git push --tags
-
+          
+          # Push changes and tags
+          git push origin main
+          git push origin "v${NEW_VERSION}"
       
       - name: Build package
         run: python -m build
