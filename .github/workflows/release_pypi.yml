@@ -9,6 +9,12 @@ on:
       - 'llm_dialog_manager/__init__.py'
       - 'pyproject.toml'
 
+# Add these permission settings
+permissions:
+  contents: write      # This allows pushing to the repository
+  pull-requests: write # This allows creating PRs if needed
+  issues: write       # This allows creating issues if needed
+
 jobs:
   publish:
     if: "!contains(github.event.head_commit.message, 'Bump version') && !contains(github.event.head_commit.message, 'bump version')"
