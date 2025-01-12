@@ -17,6 +17,7 @@ A Python package for managing AI chat conversation history with support for mult
 - Memory management options
 - Conversation search and indexing
 - Rich conversation display options
+- Vision & Json Output enabled [20240111]
 
 ## Installation
 
