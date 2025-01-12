@@ -84,7 +84,20 @@ jobs:
           sed -i "s/__version__ = \".*\"/__version__ = \"${NEW_VERSION}\"/" llm_dialog_manager/__init__.py
           
           # Update version in pyproject.toml
-          python -c "import toml; data = toml.load('pyproject.toml'); data['tool']['poetry']['version'] = '${NEW_VERSION}'; with open('pyproject.toml', 'w') as f: toml.dump(data, f)"
+          python -c "
+          import toml
+          
+          # Read the current content
+          with open('pyproject.toml', 'r') as f:
+              data = toml.load(f)
+          
+          # Update the version in the project section
+          data['project']['version'] = '${NEW_VERSION}'
+          
+          # Write back to the file
+          with open('pyproject.toml', 'w') as f:
+              toml.dump(data, f)
+          "
           
           # Commit the version update
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
