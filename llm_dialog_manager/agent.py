@@ -38,8 +38,36 @@ def load_env_vars():
 
 load_env_vars()
 
+def format_messages_for_gemini(messages):
+    """
+    将标准化的消息格式转化为 Gemini 格式。
+    system 消息应该通过 GenerativeModel 的 system_instruction 参数传入,
+    不在这个函数处理。
+    """
+    gemini_messages = []
+
+    for msg in messages:
+        role = msg["role"]
+        content = msg["content"]
+        
+        # 跳过 system 消息,因为它会通过 system_instruction 设置
+        if role == "system":
+            continue
+            
+        # 处理 user/assistant 消息
+        # 如果 content 是单一对象,转换为列表
+        if not isinstance(content, list):
+            content = [content]
+        
+        gemini_messages.append({
+            "role": role,
+            "parts": content  # content 可以包含文本和 FileMedia
+        })
+
+    return gemini_messages
+
 def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, Image.Image, Dict]]]]], max_tokens: int = 1000, 
-              temperature: float = 0.5, api_key: Optional[str] = None, 
+              temperature: float = 0.5, top_p: float = 1.0, top_k: int = 40, api_key: Optional[str] = None, 
               base_url: Optional[str] = None, json_format: bool = False) -> str:
     """
     Generate a completion using the specified model and messages.
@@ -216,6 +244,9 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
 
                 response = client.chat.completions.create(
                     model=model,
+                    max_tokens=max_tokens,
+                    top_p=top_p,
+                    top_k=top_k,
                     messages=formatted_messages,
                     temperature=temperature,
                     response_format=response_format  # Added response_format
@@ -226,32 +257,30 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
                 # If OpenAI-style API fails, fall back to Google's genai library
                 logger.info("Falling back to Google's genai library")
                 genai.configure(api_key=api_key)
-
-                # Convert messages to Gemini format
-                gemini_messages = []
+                system_instruction = ""
                 for msg in messages:
                     if msg["role"] == "system":
-                        # Prepend system message to first user message if exists
-                        if gemini_messages:
-                            first_msg = gemini_messages[0]
-                            if "parts" in first_msg and len(first_msg["parts"]) > 0:
-                                first_msg["parts"][0] = f"{msg['content']}\n\n{first_msg['parts'][0]}"
-                    else:
-                        gemini_messages.append({"role": msg["role"], "parts": msg["content"]})
-
-                # Set response_mime_type based on json_format
+                        system_instruction = msg["content"]
+                        break
+                
+                # 将其他消息转换为 gemini 格式
+                gemini_messages = format_messages_for_gemini(messages)
                 mime_type = "application/json" if json_format else "text/plain"
-
-                # Create Gemini model and generate response
-                model_instance = genai.GenerativeModel(model_name=model)
-                response = model_instance.generate_content(
-                    gemini_messages,
-                    generation_config=genai.types.GenerationConfig(
-                        temperature=temperature,
-                        response_mime_type=mime_type,  # Modified based on json_format
-                        max_output_tokens=max_tokens
-                    )
+                generation_config = genai.types.GenerationConfig(
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                    max_output_tokens=max_tokens,
+                    response_mime_type=mime_type
                 )
+
+                model_instance = genai.GenerativeModel(
+                    model_name=model,
+                    system_instruction=system_instruction,  # system 消息通过这里传入
+                    generation_config=generation_config
+                )
+
+                response = model_instance.generate_content(gemini_messages, generation_config=generation_config)
 
                 return response.text
 
@@ -395,7 +424,7 @@ class Agent:
             # Start a new user message with the image
             self.history.add_message([image_block], "user")
 
-    def generate_response(self, max_tokens=3585, temperature=0.7, json_format: bool = False) -> str:
+    def generate_response(self, max_tokens=3585, temperature=0.7, top_p=1.0, top_k=40, json_format: bool = False) -> str:
         """Generate a response from the agent.
 
         Args:
@@ -410,12 +439,14 @@ class Agent:
             raise ValueError("No messages in history to generate response from")
         
         messages = self.history.messages
-
+        print(self.model_name)
         response_text = completion(
             model=self.model_name,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
             api_key=self.api_key,
             json_format=json_format  # Pass json_format to completion
         )
@@ -486,13 +517,13 @@ class Agent:
 if __name__ == "__main__":
     # Example Usage
     # Create an Agent instance (Gemini model)
-    agent = Agent("gemini-1.5-flash", "you are an assistant", memory_enabled=True)
+    agent = Agent("gemini-1.5-flash", "you are Jack101", memory_enabled=True)
     
     # Add an image
     agent.add_image(image_path="/Users/junfan/Projects/Personal/oneapi/dialog_manager/example.png")
     
     # Add a user message
-    agent.add_message("user", "What's in this image?")
+    agent.add_message("user", "Who are you? What's in this image?")
     
     # Generate response with JSON format enabled
     try:
