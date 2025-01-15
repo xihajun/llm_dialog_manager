@@ -38,6 +38,10 @@ def load_env_vars():
 
 load_env_vars()
 
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
 def format_messages_for_gemini(messages):
     """
     将标准化的消息格式转化为 Gemini 格式。
@@ -393,22 +397,42 @@ class Agent:
                 # For Gemini, load as PIL.Image
                 image_pil = Image.open(image_path)
                 image_block = image_pil
-            else:
+            elif "claude" in self.model_name and "openai" not in self.model_name:
                 # For Claude and others, use base64 encoding
                 with open(image_path, "rb") as img_file:
                     image_data = base64.standard_b64encode(img_file.read()).decode("utf-8")
                 image_block = {
-                    "type": "image_base64",
-                    "image_base64": {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
                         "media_type": media_type,
-                        "data": image_data
-                    }
+                        "data": image_data,
+                    },
+                }
+            else:
+                # openai format
+                base64_image = encode_image(image_path)
+                image_block = {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
                 }
         else:
             # If image_url is provided
             if "gemini" in self.model_name and "openai" not in self.model_name:
                 # For Gemini, you can pass image URLs directly
                 image_block = {"type": "image_url", "image_url": {"url": image_url}}
+            elif "claude" in self.model_name and "openai" not in self.model_name:
+                import httpx
+                media_type = "image/jpeg"
+                image_data = base64.standard_b64encode(httpx.get(image_url).content).decode("utf-8")
+                image_block = {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": image_data,
+                    },
+                }
             else:
                 # For Claude and others, use image URLs
                 image_block = {
@@ -525,7 +549,7 @@ if __name__ == "__main__":
     agent = Agent("gemini-1.5-flash", "you are Jack101", memory_enabled=True)
     
     # Add an image
-    agent.add_image(image_path="/Users/junfan/Projects/Personal/oneapi/dialog_manager/example.png")
+    agent.add_image(image_path="example.png")
     
     # Add a user message
     agent.add_message("user", "Who are you? What's in this image?")
