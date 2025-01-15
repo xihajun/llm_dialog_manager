@@ -23,18 +23,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Ensure all history and tags are fetched
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install build twine setuptools wheel toml
-      
-      - name: Get version from pyproject.toml
+
+      - name: Get current version from pyproject.toml
         id: get_version
         run: |
           CURRENT_VERSION=$(python -c '
@@ -52,54 +52,53 @@ jobs:
           ')
           
           echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
-          
-          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
-          echo "major_version=${major}" >> $GITHUB_OUTPUT
-          echo "minor_version=${minor}" >> $GITHUB_OUTPUT
-      
-      - name: Check if version exists on PyPI
-        id: check_pypi
+
+      - name: Debug - Current Version
         run: |
+          echo "Current Version: ${{ steps.get_version.outputs.current_version }}"
+
+      - name: Determine New Version
+        id: determine_version
+        run: |
+          CURRENT_VERSION="${{ steps.get_version.outputs.current_version }}"
+          echo "Current Version: $CURRENT_VERSION"
+
+          # Split the current version into major, minor, and patch
+          IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+
+          # Check if the current version exists on PyPI
           PACKAGE_NAME=$(python -c "
           import toml
           config = toml.load('pyproject.toml')
           print(config['project']['name'])
           ")
-          VERSION="${{ steps.get_version.outputs.current_version }}"
-          PYPI_URL="https://pypi.org/pypi/${PACKAGE_NAME}/${VERSION}/json"
-          
-          echo "Checking PyPI for ${PACKAGE_NAME} version ${VERSION}..."
-          
+          PYPI_URL="https://pypi.org/pypi/${PACKAGE_NAME}/${CURRENT_VERSION}/json"
+
+          echo "Checking PyPI for ${PACKAGE_NAME} version ${CURRENT_VERSION}..."
           RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$PYPI_URL")
-          
+
           if [ "$RESPONSE_CODE" -eq 200 ]; then
-            echo "Version ${VERSION} already exists on PyPI."
-            NEW_VERSION="${VERSION}-dev"
+            echo "Version ${CURRENT_VERSION} already exists on PyPI. Incrementing patch version."
+            NEW_PATCH=$((patch + 1))
+            NEW_VERSION="${major}.${minor}.${NEW_PATCH}"
             echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
           else
-            echo "Version ${VERSION} is available on PyPI."
-            echo "new_version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "Version ${CURRENT_VERSION} is available on PyPI."
+            echo "new_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
           fi
-      
-      - name: Debug - Version Check
+
+      - name: Debug - New Version
         run: |
-          echo "New Version: ${{ steps.check_pypi.outputs.new_version }}"
-      
-      - name: Update version
+          echo "New Version: ${{ steps.determine_version.outputs.new_version }}"
+
+      - name: Update version in files
         run: |
-          set -e  # Exit immediately if a command exits with a non-zero status
-          
-          # Use the new_version from the PyPI check
-          NEW_VERSION="${{ steps.check_pypi.outputs.new_version }}"
-          echo "Using new version: ${NEW_VERSION}"
-          
-          # Split version into major, minor, patch components
-          IFS='.-' read -r major minor patch <<< "$NEW_VERSION"
-          echo "Major: $major, Minor: $minor, Patch: $patch"
-          
+          NEW_VERSION="${{ steps.determine_version.outputs.new_version }}"
+          echo "Updating files to version ${NEW_VERSION}"
+
           # Update version in __init__.py
           sed -i "s/__version__ = \".*\"/__version__ = \"${NEW_VERSION}\"/" llm_dialog_manager/__init__.py
-          
+
           # Update version in pyproject.toml
           python -c "
           import toml
@@ -109,35 +108,28 @@ jobs:
           with open('pyproject.toml', 'w') as f:
               toml.dump(data, f)
           "
-          
-          # Commit the version update if it's a dev version
-          if [[ "$NEW_VERSION" == *"-dev" ]]; then
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git config --local user.name "github-actions[bot]"
-            git add llm_dialog_manager/__init__.py pyproject.toml
-            git commit -m "Bump version to ${NEW_VERSION} [skip ci]"
-          fi
-          
-          # Tag the new version if it's not a dev version
-          if [[ "$NEW_VERSION" != *"-dev" ]]; then
-            git tag "v${NEW_VERSION}"
-            git push origin main
-            git push origin "v${NEW_VERSION}"
-          fi
-      
+
+      - name: Commit version changes
+        run: |
+          NEW_VERSION="${{ steps.determine_version.outputs.new_version }}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add llm_dialog_manager/__init__.py pyproject.toml
+          git commit -m "Bump version to ${NEW_VERSION} [skip ci]"
+
+      - name: Tag the new version
+        run: |
+          NEW_VERSION="${{ steps.determine_version.outputs.new_version }}"
+          git tag "v${NEW_VERSION}"
+          git push origin main
+          git push origin "v${NEW_VERSION}"
+
       - name: Build package
         run: python -m build
-      
+
       - name: Publish to PyPI
-        if: ${{ steps.check_pypi.outputs.new_version != format('{0}-dev', steps.get_version.outputs.current_version) }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
-      
-      - name: Publish to Test PyPI
-        if: ${{ steps.check_pypi.outputs.new_version == format('{0}-dev', steps.get_version.outputs.current_version) }}
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+        run: |
+          twine upload dist/* --verbose
