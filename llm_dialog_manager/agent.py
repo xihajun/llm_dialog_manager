@@ -389,7 +389,7 @@ class Agent:
         if image_path:
             if not os.path.exists(image_path):
                 raise FileNotFoundError(f"Image file {image_path} does not exist.")
-            if "gemini" in self.model_name:
+            if "gemini" in self.model_name and "openai" not in self.model_name:
                 # For Gemini, load as PIL.Image
                 image_pil = Image.open(image_path)
                 image_block = image_pil
@@ -406,7 +406,7 @@ class Agent:
                 }
         else:
             # If image_url is provided
-            if "gemini" in self.model_name:
+            if "gemini" in self.model_name and "openai" not in self.model_name:
                 # For Gemini, you can pass image URLs directly
                 image_block = {"type": "image_url", "image_url": {"url": image_url}}
             else:
