@@ -74,7 +74,10 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
     """
     try:
         service = ""
-        if "claude" in model:
+        if "openai" in model:
+            service = "openai"
+            model
+        elif "claude" in model:
             service = "anthropic"
         elif "gemini" in model:
             service = "gemini"
@@ -92,7 +95,7 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
 
         def format_messages_for_api(model, messages):
             """Convert ChatHistory messages to the format required by the specific API."""
-            if "claude" in model:
+            if "claude" in model and "openai" not in model:
                 formatted = []
                 system_msg = ""
                 if messages and messages[0]["role"] == "system":
@@ -141,7 +144,7 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
                         formatted.append({"role": msg["role"], "content": combined_content})
                 return system_msg, formatted
 
-            elif "gemini" in model or "gpt" in model or "grok" in model:
+            elif ("gemini" in model or "gpt" in model or "grok" in model) and "openai" not in model:
                 formatted = []
                 for msg in messages:
                     content = msg["content"]
@@ -191,7 +194,7 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
 
         system_msg, formatted_messages = format_messages_for_api(model, messages.copy())
 
-        if "claude" in model:
+        if "claude" in model and "openai" not in model:
             # Check for Vertex configuration
             vertex_project_id = os.getenv('VERTEX_PROJECT_ID')
             vertex_region = os.getenv('VERTEX_REGION')
@@ -232,7 +235,7 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
 
             return response.completion
 
-        elif "gemini" in model:
+        elif "gemini" in model and "openai" not in model:
             try:
                 # First try OpenAI-style API
                 client = openai.OpenAI(
@@ -284,7 +287,7 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
 
                 return response.text
 
-        elif "grok" in model:
+        elif "grok" in model and "openai" not in model:
             # Randomly choose between OpenAI and Anthropic SDK
             use_anthropic = random.choice([True, False])
 
@@ -326,6 +329,8 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
                 return response.choices[0].message.content
 
         else:  # OpenAI models
+            if model.endswith("-openai"):
+                model = model[:-7]  # Remove last 7 characters ("-openai")
             client = openai.OpenAI(api_key=api_key, base_url=base_url)
             # Set response_format based on json_format
             response_format = {"type": "json_object"} if json_format else {"type": "plain_text"}
