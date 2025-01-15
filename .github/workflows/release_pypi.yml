@@ -8,13 +8,12 @@ on:
     # paths-ignore:
     #   - 'llm_dialog_manager/__init__.py'
     #   - 'pyproject.toml'
-    #TODO: fix version issue
+    # TODO: fix version issue
 
-# Add these permission settings
 permissions:
-  contents: write      # This allows pushing to the repository
-  pull-requests: write # This allows creating PRs if needed
-  issues: write       # This allows creating issues if needed
+  contents: write      # Allows pushing to the repository
+  pull-requests: write # Allows creating PRs if needed
+  issues: write       # Allows creating issues if needed
 
 jobs:
   publish:
@@ -23,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Ensure all history and tags are fetched
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -38,7 +37,6 @@ jobs:
       - name: Get version from pyproject.toml
         id: get_version
         run: |
-          # First verify the file exists and extract version with error handling
           CURRENT_VERSION=$(python -c '
           import toml
           import sys
@@ -53,39 +51,51 @@ jobs:
               sys.exit(1)
           ')
           
-          # Store the version in GitHub Actions output
           echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
           
-          # Split version into major, minor, patch components
           IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
           echo "major_version=${major}" >> $GITHUB_OUTPUT
           echo "minor_version=${minor}" >> $GITHUB_OUTPUT
-
+      
+      - name: Check if version exists on PyPI
+        id: check_pypi
+        run: |
+          PACKAGE_NAME=$(python -c "
+          import toml
+          config = toml.load('pyproject.toml')
+          print(config['project']['name'])
+          ")
+          VERSION="${{ steps.get_version.outputs.current_version }}"
+          PYPI_URL="https://pypi.org/pypi/${PACKAGE_NAME}/${VERSION}/json"
+          
+          echo "Checking PyPI for ${PACKAGE_NAME} version ${VERSION}..."
+          
+          RESPONSE_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$PYPI_URL")
+          
+          if [ "$RESPONSE_CODE" -eq 200 ]; then
+            echo "Version ${VERSION} already exists on PyPI."
+            NEW_VERSION="${VERSION}-dev"
+            echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "Version ${VERSION} is available on PyPI."
+            echo "new_version=${VERSION}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Debug - Version Check
+        run: |
+          echo "New Version: ${{ steps.check_pypi.outputs.new_version }}"
+      
       - name: Update version
         run: |
           set -e  # Exit immediately if a command exits with a non-zero status
           
-          # Get major and minor version from previous step
-          MAJOR_VERSION="${{ steps.get_version.outputs.major_version }}"
-          MINOR_VERSION="${{ steps.get_version.outputs.minor_version }}"
+          # Use the new_version from the PyPI check
+          NEW_VERSION="${{ steps.check_pypi.outputs.new_version }}"
+          echo "Using new version: ${NEW_VERSION}"
           
-          # Find the latest tag matching the current major.minor version
-          VERSION_PREFIX="v${MAJOR_VERSION}.${MINOR_VERSION}."
-          LAST_VERSION_TAG=$(git tag --list "${VERSION_PREFIX}*" --sort=-v:refname | head -n 1)
-          
-          if [ -z "$LAST_VERSION_TAG" ]; then
-            # No tag exists for this major.minor version, start from 1
-            COMMIT_COUNT=1
-          else
-            # Count commits since the last version tag
-            COMMIT_COUNT=$(git rev-list ${LAST_VERSION_TAG}..HEAD --count)
-            # Increment commit count to start from the next patch version
-            COMMIT_COUNT=$((COMMIT_COUNT + 1))
-          fi
-          
-          # Create the new version
-          NEW_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${COMMIT_COUNT}"
-          echo "New version will be: ${NEW_VERSION}"
+          # Split version into major, minor, patch components
+          IFS='.-' read -r major minor patch <<< "$NEW_VERSION"
+          echo "Major: $major, Minor: $minor, Patch: $patch"
           
           # Update version in __init__.py
           sed -i "s/__version__ = \".*\"/__version__ = \"${NEW_VERSION}\"/" llm_dialog_manager/__init__.py
@@ -93,37 +103,41 @@ jobs:
           # Update version in pyproject.toml
           python -c "
           import toml
-          
-          # Read the current content
           with open('pyproject.toml', 'r') as f:
               data = toml.load(f)
-          
-          # Update the version in the project section
           data['project']['version'] = '${NEW_VERSION}'
-          
-          # Write back to the file
           with open('pyproject.toml', 'w') as f:
               toml.dump(data, f)
           "
           
-          # Commit the version update
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add llm_dialog_manager/__init__.py pyproject.toml
-          git commit -m "Bump version to ${NEW_VERSION} [skip ci]"
+          # Commit the version update if it's a dev version
+          if [[ "$NEW_VERSION" == *"-dev" ]]; then
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add llm_dialog_manager/__init__.py pyproject.toml
+            git commit -m "Bump version to ${NEW_VERSION} [skip ci]"
+          fi
           
-          # Tag the new version
-          git tag "v${NEW_VERSION}"
-          
-          # Push changes and tags
-          git push origin main
-          git push origin "v${NEW_VERSION}"
+          # Tag the new version if it's not a dev version
+          if [[ "$NEW_VERSION" != *"-dev" ]]; then
+            git tag "v${NEW_VERSION}"
+            git push origin main
+            git push origin "v${NEW_VERSION}"
+          fi
       
       - name: Build package
         run: python -m build
       
       - name: Publish to PyPI
+        if: ${{ steps.check_pypi.outputs.new_version != format('{0}-dev', steps.get_version.outputs.current_version) }}
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: twine upload dist/*
+      
+      - name: Publish to Test PyPI
+        if: ${{ steps.check_pypi.outputs.new_version == format('{0}-dev', steps.get_version.outputs.current_version) }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
