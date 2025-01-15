@@ -5,9 +5,9 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'llm_dialog_manager/__init__.py'
-      - 'pyproject.toml'
+    # paths-ignore:
+    #   - 'llm_dialog_manager/__init__.py'
+    #   - 'pyproject.toml'
 
 # Add these permission settings
 permissions:
