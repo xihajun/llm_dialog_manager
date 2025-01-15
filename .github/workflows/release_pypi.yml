@@ -8,6 +8,7 @@ on:
     # paths-ignore:
     #   - 'llm_dialog_manager/__init__.py'
     #   - 'pyproject.toml'
+    #TODO: fix version issue
 
 # Add these permission settings
 permissions:
