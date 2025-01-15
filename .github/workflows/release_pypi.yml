@@ -139,5 +139,5 @@ jobs:
         if: ${{ steps.check_pypi.outputs.new_version == format('{0}-dev', steps.get_version.outputs.current_version) }}
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
