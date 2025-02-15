@@ -394,16 +394,21 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
             if model.endswith("-openai"):
                 model = model[:-7]  # Remove last 7 characters ("-openai")
             client = openai.OpenAI(api_key=api_key, base_url=base_url)
-            # Set response_format based on json_format
-            response_format = {"type": "json_object"} if json_format else {"type": "plain_text"}
+            
+            # Create base parameters
+            params = {
+                "model": model,
+                "messages": formatted_messages,
+            }
+            
+            # Add optional parameters
+            if json_format:
+                params["response_format"] = {"type": "json_object"}
+            if not ("o1" in model or "o3" in model):
+                params["max_tokens"] = max_tokens
+                params["temperature"] = temperature
 
-            response = client.chat.completions.create(
-                model=model,
-                messages=formatted_messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                response_format=response_format  # Added response_format
-            )
+            response = client.chat.completions.create(**params)
             return response.choices[0].message.content
 
         # Release the API key after successful use
