@@ -172,7 +172,7 @@ async def save_history(data: dict):
     return {"id": history_id}
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8099)
 
 if __name__ == "__main__":
     main()

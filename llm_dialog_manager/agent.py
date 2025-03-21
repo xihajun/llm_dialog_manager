@@ -393,7 +393,12 @@ def completion(model: str, messages: List[Dict[str, Union[str, List[Union[str, I
         else:  # OpenAI models
             if model.endswith("-openai"):
                 model = model[:-7]  # Remove last 7 characters ("-openai")
-            client = openai.OpenAI(api_key=api_key, base_url=base_url)
+            
+            # Initialize OpenAI client with only supported parameters
+            client_kwargs = {"api_key": api_key}
+            if base_url:
+                client_kwargs["base_url"] = base_url
+            client = openai.OpenAI(**client_kwargs)
             
             # Create base parameters
             params = {
