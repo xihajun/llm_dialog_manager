@@ -35,3 +35,9 @@ venv/
 
 # personal variables
 PLAN.md
+
+# images
+*.png
+test*
+images/*
+images

@@ -1,7 +1,9 @@
 # 核心依赖
 openai==1.54.2
+httpx==0.27.2
 anthropic==0.39.0
-google-generativeai==0.1.0
+google-generativeai==0.8.4
+google-genai==1.7.0
 python-dotenv==1.0.0
 
 # interface
@@ -19,3 +21,6 @@ isort==5.12.0
 
 # 可选依赖
 uuid==1.30
+Pillow==11.1.0
+anthropic[bedrock]
+boto3
