@@ -55,7 +55,7 @@ XAI_API_KEY=your-x-key
 from llm_dialog_manager import Agent
 
 # Initialize an agent with a specific model
-agent = Agent("claude-2.1", memory_enabled=True)
+agent = Agent("ep-20250319212209-j6tfj-openai", memory_enabled=True)
 
 # Add messages and generate responses
 agent.add_message("system", "You are a helpful assistant")

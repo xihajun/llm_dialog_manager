@@ -1,0 +1,5 @@
+When user input "run gemini test", run the following command:
+
+source venv/bin/activate && python -c "from llm_dialog_manager import Agent; agent = Agent('gemini-1.5-flash', memory_enabled=True); agent.add_message('user', 'What is the capital of France?'); response = agent.generate_response(); print(f'Response: {response}')"
+
+Similar to other model tests

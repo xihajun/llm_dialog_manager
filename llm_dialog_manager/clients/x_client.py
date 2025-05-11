@@ -3,10 +3,10 @@ Client implementation for X.AI (Grok) models
 """
 import os
 import logging
-import requests
+import openai
 from typing import List, Dict, Optional, Union
 
-from ..formatters import XFormatter
+from ..formatters import OpenAIFormatter
 from .base import BaseClient
 
 logger = logging.getLogger(__name__)
@@ -38,47 +38,44 @@ class XClient(BaseClient):
             # Get API credentials if not set
             self.get_credentials()
             
-            # Format messages for X.AI API
-            formatter = XFormatter()
-            system_message, formatted_messages = formatter.format_messages(messages)
+            # Format messages for X.AI API using OpenAI formatter
+            # (X.AI uses the same message format as OpenAI)
+            formatter = OpenAIFormatter()
+            _, formatted_messages = formatter.format_messages(messages)
             
-            # Construct request payload
-            payload = {
-                "model": kwargs.get("model", "grok-1"),
+            # Set default base URL if not already set
+            if not self.base_url:
+                self.base_url = "https://api.x.ai/v1"
+            
+            # Initialize OpenAI client
+            client = openai.OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
+            )
+            
+            # Process model name
+            model = kwargs.get("model", "grok-3-beta")
+            
+            # Create base parameters
+            params = {
+                "model": model,
                 "messages": formatted_messages,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
                 "top_p": top_p,
-                "top_k": top_k
             }
             
-            # Add system message if present
-            if system_message:
-                payload["system"] = system_message
-                
-            # Add JSON response format if requested
+            # Add optional parameters
             if json_format:
-                payload["response_format"] = {"type": "json_object"}
+                params["response_format"] = {"type": "json_object"}
             
-            # Make API request
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            
-            response.raise_for_status()
-            result = response.json()
+            # Generate completion using OpenAI client
+            response = client.chat.completions.create(**params)
             
             # Release API credentials
             self.release_credentials()
             
-            return result["choices"][0]["message"]["content"]
+            return response.choices[0].message.content
             
         except Exception as e:
             logger.error(f"X.AI API error: {e}")

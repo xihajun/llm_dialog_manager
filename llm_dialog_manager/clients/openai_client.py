@@ -65,15 +65,26 @@ class OpenAIClient(BaseClient):
                 http_client=httpx.Client(**http_options) if http_options else None
             )
             
+            # Process model name
+            model = kwargs.get("model", "gpt-4")
+            if model.endswith("-openai"):
+                model = model[:-7]  # Remove last 7 characters ("-openai")
+            
+            # Create base parameters
+            params = {
+                "model": model,
+                "messages": formatted_messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p
+            }
+            
+            # Add optional parameters
+            if json_format:
+                params["response_format"] = {"type": "json_object"}
+            
             # Generate completion
-            response = client.chat.completions.create(
-                model=kwargs.get("model", "gpt-4"),
-                messages=formatted_messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                response_format={"type": "json_object"} if json_format else None
-            )
+            response = client.chat.completions.create(**params)
             
             # Release API credentials
             self.release_credentials()
