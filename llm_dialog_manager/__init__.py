@@ -5,7 +5,7 @@ A modular framework for building conversational AI applications with
 support for multiple LLM providers.
 """
 
-__version__ = "0.5.0"
+__version__ = "0.5.3"
 
 from .agent import Agent
 from .chat_history import ChatHistory
