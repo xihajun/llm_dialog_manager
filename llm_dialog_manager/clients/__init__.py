@@ -19,6 +19,8 @@ def get_client(model_name, api_key=None, base_url=None):
     Returns:
         An instance of the appropriate client class
     """
+    if "-openai" in model_name:
+        return OpenAIClient(api_key=api_key, base_url=base_url)
     if "claude" in model_name:
         return AnthropicClient(api_key=api_key, base_url=base_url)
     elif "gemini" in model_name:
